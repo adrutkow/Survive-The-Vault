@@ -38,7 +38,7 @@ def get_block(id):
 
 
 def get_item(id):
-    return config.ITEMS.subsurface([(id % 8) * 50, (int(id / 8)), 50, 50])
+    return config.ITEMS.subsurface([(id % 8) * 50, (int(id / 8) * 50), 50, 50])
 
 
 def draw_chunk(chunk, player):
@@ -50,7 +50,7 @@ def draw_chunk(chunk, player):
             if pos_x < -60 or pos_x > 1366 or pos_y < -60 or pos_y > 850:
                 continue
 
-            draw_image(get_block(chunk.blocks[y][x].id), pos_x, pos_y)
+            draw_image(get_block(config.BLOCK_DATA[chunk.blocks[y][x].id]["texture"]), pos_x, pos_y)
             if chunk.blocks[y][x].entity is not None:
                 chunk.blocks[y][x].entity.draw(pos_x, pos_y)
 
@@ -101,7 +101,6 @@ def mouse(event):
     mouse_x = event.pos[0]
     mouse_y = event.pos[1]
     button = event.button
-    print(button)
 
     # Left click
     if button == 1:
@@ -123,7 +122,8 @@ def mouse(event):
                     variables.player.harvest(block.entity)
                 else:
                     if player.inventory.get_selected_item().is_tool:
-                        variables.player.harvest(block.entity)
+                        bonus = 2 if player.inventory.get_selected_item().is_axe else 0
+                        variables.player.harvest(block.entity, bonus)
         if player.inventory.selected is not None:
             selected = player.inventory.selected
             if player.inventory.inventory[selected[1]][selected[0]] is not None:
@@ -162,3 +162,11 @@ def place_block(x, y, id):
         return False
     target_block.entity = classes.Entity(id, target_block.x, target_block.y, target_block)
     return True
+
+def make_farmland():
+    mouse_x = pygame.mouse.get_pos()[0] - 1366 / 2
+    mouse_y = pygame.mouse.get_pos()[1] - 768 / 2
+    block = variables.game.world.get_block(variables.player.x + mouse_x, variables.player.y + mouse_y)
+    print(block.id)
+    if block.id == 0:
+        block.id = 3

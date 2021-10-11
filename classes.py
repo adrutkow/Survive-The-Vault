@@ -113,10 +113,14 @@ class Player:
         self.is_harvesting = False
         self.currently_harvesting = None
         self.is_eating = False
+        self.bonus = 0
         self.currently_eating = None
         self.progress_bar = ProgressBar(self)
         self.inventory = Inventory(self, [3, 9], 1198, 148)
         self.craft_menu = CraftMenu(self, 1044, 112)
+        self.health = 100
+        self.hunger = 100
+        self.timer = 0
         for y in range(0, 3):
             for x in range(0, 3):
                 if x == 1 and y == 1:
@@ -124,6 +128,7 @@ class Player:
                 self.adjacent_chunks.append(self.world.get_chunk(x - 1, y - 1))
 
     def tick(self):
+        self.timer += 1
         self.chunk_x, self.chunk_y = functions.get_chunk_coords(self.x, self.y)
         self.movement()
         self.do_harvest()
@@ -133,6 +138,7 @@ class Player:
         functions.draw_image(config.INVENTORY, 1198, 112)
         self.inventory.draw_items()
         self.craft_menu.draw()
+        self.do_hunger()
 
     def movement(self):
         keys = pygame.key.get_pressed()
@@ -186,35 +192,38 @@ class Player:
                 y = (mouse_y + m_y + off_y) // 50 * 50 - m_y
                 pygame.draw.rect(config.WINDOW, [255, 0, 0], [x - off_x, y - off_y, 50, 50], 2)
         self.progress_bar.draw()
+        functions.draw_text("health: " + str(self.health), 0, 0)
+        functions.draw_text("hunger: " + str(self.hunger), 0, 20)
 
     def check_position(self, x, y):
-        return True
         b_x, b_y = functions.get_block_coords(x, y)
         chunk = self.current_chunk
+        block = chunk.blocks[b_y][b_x]
 
         # is it in same chunk
         if not (self.current_chunk.x == functions.get_chunk_coords(x, y)[0] and self.current_chunk.y ==
                 functions.get_chunk_coords(x, y)[1]):
             chunk = self.world.get_chunk(functions.get_chunk_coords(x, y)[0], functions.get_chunk_coords(x, y)[1])
+            block = chunk.blocks[b_y][b_x]
 
-        if chunk.blocks[b_y][b_x].entity is not None:
+        if block.entity is not None:
             return False
-        if chunk.blocks[b_y][b_x].id == 0:
+        if config.BLOCK_DATA[block.id].get("walkable") is not None:
             return True
-
         return False
 
-    def harvest(self, entity):
+    def harvest(self, entity, bonus=0):
         self.is_harvesting = True
         self.currently_harvesting = entity
         self.progress_bar.active = True
         self.progress_bar.progress = 0
         self.progress_bar.max_progress = entity.hardness
+        self.bonus = bonus
 
     def do_harvest(self):
         if not self.is_harvesting:
             return
-        self.progress_bar.progress += 1
+        self.progress_bar.progress += 1 + self.bonus
         if self.progress_bar.progress >= self.progress_bar.max_progress:
             if self.currently_harvesting.block is not None:
                 functions.get_loot_from_entity(self.currently_harvesting.id, self.inventory)
@@ -234,6 +243,8 @@ class Player:
             return
         self.progress_bar.progress += 1
         if self.progress_bar.progress >= self.progress_bar.max_progress:
+            self.hunger += config.ITEM_DATA[self.currently_eating]["hunger"]
+            self.hunger = 100 if self.hunger > 100 else self.hunger
             self.inventory.remove_item(self.currently_eating, 1)
             self.progress_bar.reset()
             self.is_eating = False
@@ -255,6 +266,13 @@ class Player:
                         continue
                     self.adjacent_chunks.append(
                         self.world.get_chunk(self.current_chunk.x + x, self.current_chunk.y + y))
+
+    def do_hunger(self):
+        if self.timer % 1200 == 0:
+            if self.hunger <= 0:
+                self.health -= 1
+            else:
+                self.hunger -= 1
 
 
 class Client:
@@ -336,6 +354,8 @@ class Item:
         self.is_tool = config.ITEM_DATA[id].get("is_tool")
         self.is_food = config.ITEM_DATA[id].get("is_food")
         self.is_material = config.ITEM_DATA[id].get("is_material")
+        self.is_axe = config.ITEM_DATA[id].get("is_axe")
+        self.is_hoe = config.ITEM_DATA[id].get("is_hoe")
         self.places = config.ITEM_DATA[id].get("places")
 
     def use(self):
@@ -346,6 +366,8 @@ class Item:
                 variables.player.inventory.remove_item(self.id, 1)
         if self.is_food is not None:
             variables.player.eat()
+        if self.is_hoe is not None:
+            functions.make_farmland()
 
 
 class ProgressBar:
@@ -483,12 +505,14 @@ class CraftMenu:
         current_item = config.CRAFT_RECIPES[self.index][1]
         functions.draw_image(config.CRAFT_MENU, self.x, self.y)
         functions.draw_image(functions.get_item(current_item), self.x + 51, self.y + 54)
+        functions.draw_text(config.ITEM_DATA[current_item]["name"], 7 + self.x, 106 + self.y)
         for i in range(0, len(config.CRAFT_RECIPES[self.index][0])):
             t = config.CRAFT_RECIPES[self.index][0][i]
             item_id = t[0]
             item_amount = t[1]
             functions.draw_image(functions.get_item(item_id), self.x + 6, self.y + 134 + i*50 + i*2)
             functions.draw_text(config.ITEM_DATA[item_id]["name"]+" x"+str(item_amount), 60 + self.x, 158 + i * 50 + self.y, size=15)
+
 
     def tick(self):
         if not self.active:

@@ -24,20 +24,22 @@ ENTITY_LOOT_TABLE = [
 ]
 
 ITEM_DATA = [
-    {"name": "Wood", "is_material": True},
+    {"name": "Wood", "is_material": True},                                #0
     {"name": "Stone", "is_material": True},
-    {"name": "Sliwka", "is_food": True},
+    {"name": "Sliwka", "is_food": True, "hunger": 5},
     {"name": "Wooden block", "places": 2},
     {"name": "Stone block", "places": 3},
-    {"name": "fuckig hoe", "is_tool": True},
-    {"name": "rare sliwka", "is_food": True},
+    {"name": "fuckig hoe", "is_tool": True, "is_hoe": True},
+    {"name": "rare sliwka", "is_food": True, "hunger": 100},
     {"name": "fuckig sword", "is_tool": True},
-    {"name": "blunt", "is_food": True},
+    {"name": "blunt", "is_food": True, "hunger": 20},
     {"name": "Bosnian sword", "is_tool": True},
-    {"name": "bomba"},
+    {"name": "bomba"},                                                     #10
     {"name": "kazakhstan bomba"},
     {"name": "soy"},
-    {"name": "one sliwka"}
+    {"name": "one sliwka"},
+    {"name": "bendy axe", "is_tool": True, "is_axe": True},
+    {"name": "bendy fans"}
 ]
 
 ENTITY_DATA = [
@@ -47,12 +49,21 @@ ENTITY_DATA = [
     {"name": "Stone Block", "top": 9}
 ]
 
+BLOCK_DATA = [
+    {"name": "grass", "walkable": True, "texture":0},
+    {"name": "water", "texture":1},
+    {"name": "sand", "walkable": True, "texture":2},
+    {"name": "farmland", "walkable":True, "texture":10}
+]
+
 CRAFT_RECIPES = [
     [[[0, 50], [1, 50]], 5],
     [[[2, 150]], 6],
     [[[0, 50], [1, 50]], 7],
     [[[0, 25]], 3],
-    [[[1, 25]], 4]
+    [[[1, 25]], 4],
+    [[[0, 100], [1, 100]], 14],
+    [[[2, 50], [0,100], [1,100]], 15]
 ]
 
 # int(abs(config.NOISE((x/30, y/30)) * 255))
