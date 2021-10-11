@@ -15,6 +15,8 @@ def initialize():
     variables.game = classes.Game()
     variables.player = classes.Player(variables.game)
     variables.game.players.append(variables.player)
+    variables.player.inventory.add_item(0, 150)
+    variables.player.inventory.add_item(1, 150)
 
 
 def draw_image(image, x, y):
@@ -75,6 +77,7 @@ def handle_inputs():
         if e.type == pygame.QUIT:
             pygame.quit()
         if e.type == pygame.MOUSEBUTTONDOWN:
+            mouse(e)
             world = variables.game.world
             player = variables.player
             mouse_x = pygame.mouse.get_pos()[0] - 1366 / 2
@@ -84,7 +87,7 @@ def handle_inputs():
     keys = pygame.key.get_pressed()
 
     if keys[pygame.K_1]:
-        save_game(variables.game)
+        save_game()
         print("saved game")
 
     if keys[pygame.K_2]:
@@ -92,48 +95,42 @@ def handle_inputs():
         print("loaded game")
 
 
-def mouse():
+def mouse(event):
     player = variables.player
-    mouse_x = pygame.mouse.get_pos()[0]
-    mouse_y = pygame.mouse.get_pos()[1]
-
-    if not player.inventory.check_mouse(mouse_x, mouse_y):
-        # This is so stupid
-        off_x, off_y = 17, 17
-        m_x = player.x % 50
-        m_y = player.y % 50
-        x = (mouse_x + m_x + off_x) // 50 * 50 - m_x
-        y = (mouse_y + m_y + off_y) // 50 * 50 - m_y
-
-        pygame.draw.rect(config.WINDOW, [255, 0, 0], [x - off_x, y - off_y, 50, 50], 2)
-
-    mouse_click = pygame.mouse.get_pressed(3)
+    game = variables.game
+    mouse_x = event.pos[0]
+    mouse_y = event.pos[1]
+    button = event.button
+    print(button)
 
     # Left click
-    if mouse_click[0]:
-        print(mouse_x, mouse_y)
+    if button == 1:
         if player.inventory.check_if_clicked() != False:
             player.inventory.selected = player.inventory.check_if_clicked()
         else:
             player.inventory.selected = None
-        variables.player.inventory.add_item(classes.Item(3, 1))
-
+        for i in game.buttons:
+            i.tick()
 
     # Right click
-    if mouse_click[2]:
+    if button == 3:
         mouse_x = pygame.mouse.get_pos()[0] - 1366 / 2
         mouse_y = pygame.mouse.get_pos()[1] - 768 / 2
         block = variables.game.world.get_block(player.x + mouse_x, player.y + mouse_y)
         if block.entity is not None:
             if block.entity.harvestable:
-                variables.player.harvest(block.entity)
+                if player.inventory.get_selected_item() is None:
+                    variables.player.harvest(block.entity)
+                else:
+                    if player.inventory.get_selected_item().is_tool:
+                        variables.player.harvest(block.entity)
         if player.inventory.selected is not None:
             selected = player.inventory.selected
             if player.inventory.inventory[selected[1]][selected[0]] is not None:
                 player.inventory.inventory[selected[1]][selected[0]].use()
 
 
-def save_game(game):
+def save_game():
     draw_text("saving game...", 0, 0)
     pygame.display.update()
     data = [variables.game, variables.player]
@@ -155,10 +152,13 @@ def get_loot_from_entity(id, inventory):
             amount = i[1]
         else:
             amount = randint(i[1][0], i[1][1])
-        inventory.add_item(classes.Item(i[0], amount))
+        inventory.add_item(i[0], amount)
 
 
 def place_block(x, y, id):
     """Places a block in the world using world coordinates"""
     target_block = variables.player.world.get_block(x, y)
+    if target_block.entity is not None:
+        return False
     target_block.entity = classes.Entity(id, target_block.x, target_block.y, target_block)
+    return True

@@ -9,6 +9,7 @@ class Game:
     def __init__(self):
         self.world = World()
         self.players = []
+        self.buttons = []
 
     def tick(self):
         for i in self.players:
@@ -111,8 +112,11 @@ class Player:
         self.collision_box = [self.x - self.w / 2, self.y + self.h - 10, 5, 5]
         self.is_harvesting = False
         self.currently_harvesting = None
+        self.is_eating = False
+        self.currently_eating = None
         self.progress_bar = ProgressBar(self)
         self.inventory = Inventory(self, [3, 9], 1198, 148)
+        self.craft_menu = CraftMenu(self, 1044, 112)
         for y in range(0, 3):
             for x in range(0, 3):
                 if x == 1 and y == 1:
@@ -122,12 +126,13 @@ class Player:
     def tick(self):
         self.chunk_x, self.chunk_y = functions.get_chunk_coords(self.x, self.y)
         self.movement()
-        functions.mouse()
         self.do_harvest()
+        self.do_eating()
         self.chunk_check()
         self.draw()
         functions.draw_image(config.INVENTORY, 1198, 112)
         self.inventory.draw_items()
+        self.craft_menu.draw()
 
     def movement(self):
         keys = pygame.key.get_pressed()
@@ -167,6 +172,19 @@ class Player:
             functions.draw_chunk(i, self)
         pygame.draw.rect(config.WINDOW, (255, 0, 0), [1366 / 2, 768 / 2, 2, 2])
         functions.draw_image(config.PLAYER_IMAGE, 1366 / 2 - self.w / 2, 768 / 2 - self.h)
+
+        # Draw the red rectangle thingy
+        mouse_x = pygame.mouse.get_pos()[0]
+        mouse_y = pygame.mouse.get_pos()[1]
+        if self.craft_menu.active and not self.craft_menu.check_mouse(mouse_x, mouse_y):
+            if not self.inventory.check_mouse(mouse_x, mouse_y):
+                # This is so stupid
+                off_x, off_y = 17, 17
+                m_x = self.x % 50
+                m_y = self.y % 50
+                x = (mouse_x + m_x + off_x) // 50 * 50 - m_x
+                y = (mouse_y + m_y + off_y) // 50 * 50 - m_y
+                pygame.draw.rect(config.WINDOW, [255, 0, 0], [x - off_x, y - off_y, 50, 50], 2)
         self.progress_bar.draw()
 
     def check_position(self, x, y):
@@ -204,6 +222,24 @@ class Player:
                 self.is_harvesting = False
                 self.progress_bar.reset()
 
+    def eat(self):
+        self.is_eating = True
+        self.currently_eating = self.inventory.inventory[self.inventory.selected[1]][self.inventory.selected[0]].id
+        self.progress_bar.active = True
+        self.progress_bar.progress = 0
+        self.progress_bar.max_progress = 30
+
+    def do_eating(self):
+        if not self.is_eating:
+            return
+        self.progress_bar.progress += 1
+        if self.progress_bar.progress >= self.progress_bar.max_progress:
+            self.inventory.remove_item(self.currently_eating, 1)
+            self.progress_bar.reset()
+            self.is_eating = False
+            self.currently_eating = None
+
+
     def chunk_check(self):
         """Checks if the player changed chunks"""
         if self.chunk_x != functions.get_chunk_coords(self.x, self.y)[0] or self.chunk_y != \
@@ -234,19 +270,30 @@ class Client:
 
 
 class Button:
-    def __init__(self, scene, id, x, y, w, h, text=""):
+    def __init__(self, id, x, y, w, h, text="", owner=None):
         self.id = id
         self.x = x
         self.y = y
         self.w = w
         self.h = h
+        self.active = True
         self.text = text
+        self.owner = owner
 
     def on_click(self):
         # Start game button
         if self.id == 0:
             functions.initialize()
             variables.client.scene = 99
+        # Craft button
+        if self.id == 1:
+            self.owner.craft()
+        # Previous craft button
+        if self.id == 2:
+            self.owner.previous_craft()
+        # Next craft button
+        if self.id == 3:
+            self.owner.next_craft()
 
     def is_clicked(self, x, y):
         mouse_click = pygame.mouse.get_pressed()
@@ -255,6 +302,8 @@ class Button:
                 return True
 
     def tick(self):
+        if not self.active:
+            return
         mouse = pygame.mouse.get_pos()
         if self.is_clicked(mouse[0], mouse[1]):
             self.on_click()
@@ -269,12 +318,14 @@ class Scene:
 class MainMenu(Scene):
     def __init__(self):
         super(MainMenu, self).__init__()
-        self.current_buttons.append(Button(self, 0, 0, 0, 1366, 768))
+        self.current_buttons.append(Button(0, 0, 0, 1366, 768))
 
     def tick(self):
         for i in self.current_buttons:
             i.tick()
         functions.draw_image(config.TITLE_SCREEN, 0, 0)
+
+
 
 
 class Item:
@@ -291,7 +342,10 @@ class Item:
         if self.places is not None:
             x = variables.player.x + pygame.mouse.get_pos()[0] - 1366 / 2
             y = variables.player.y + pygame.mouse.get_pos()[1] - 768 / 2
-            functions.place_block(x, y, self.places)
+            if functions.place_block(x, y, self.places):
+                variables.player.inventory.remove_item(self.id, 1)
+        if self.is_food is not None:
+            variables.player.eat()
 
 
 class ProgressBar:
@@ -348,19 +402,30 @@ class Inventory:
         if self.selected is not None:
             pygame.draw.rect(config.WINDOW, (0,255,0), (self.x+self.selected[0]*50+2, self.y+self.selected[1]*50+2, 49, 49), 2)
 
-    def add_item(self, item):
+    def add_item(self, item_id, amount):
         for y in range(0, self.layout[1]):
             for x in range(0, self.layout[0]):
                 if self.inventory[y][x] is None:
                     continue
-                if self.inventory[y][x].id == item.id:
-                    self.inventory[y][x].amount += item.amount
+                if self.inventory[y][x].id == item_id:
+                    self.inventory[y][x].amount += amount
                     return
         for y in range(0, self.layout[1]):
             for x in range(0, self.layout[0]):
                 if self.inventory[y][x] is None:
-                    self.inventory[y][x] = item
+                    self.inventory[y][x] = Item(item_id, amount)
                     return
+
+    def remove_item(self, item_id, amount):
+        for y in range(0, self.layout[1]):
+            for x in range(0, self.layout[0]):
+                if self.inventory[y][x] is None:
+                    continue
+                if self.inventory[y][x].id == item_id:
+                    self.inventory[y][x].amount -= amount
+                    if self.inventory[y][x].amount <= 0:
+                        self.inventory[y][x] = None
+
 
     def check_if_clicked(self):
         mouse_x = pygame.mouse.get_pos()[0]
@@ -379,3 +444,90 @@ class Inventory:
         x = self.x
         y = self.y
         return x < mouse_x < x + self.layout[0] * 50 and y < mouse_y < y + self.layout[1] * 50
+
+    def check_if_has_items(self, id, amount):
+        for y in range(0, self.layout[1]):
+            for x in range(0, self.layout[0]):
+                if self.inventory[y][x] is None:
+                    continue
+                if self.inventory[y][x].id == id:
+                    if self.inventory[y][x].amount >= amount:
+                        return True
+        return False
+
+    def get_selected_item(self):
+        if self.selected is None:
+            return None
+        if self.inventory[self.selected[1]][self.selected[0]] is None:
+            return None
+        return self.inventory[self.selected[1]][self.selected[0]]
+
+
+class CraftMenu:
+    def __init__(self, player, x, y):
+        self.x = x
+        self.y = y
+        self.w = 152
+        self.h = 488
+        self.owner = player
+        self.active = True
+        self.index = 0
+        self.max_index = len(config.CRAFT_RECIPES)
+        self.buttons = []
+        self.buttons.append(Button(1, self.x + 17, self.y + 434, 118, 37, owner=self))
+        self.buttons.append(Button(2, self.x + 7, self.y + 54, 42, 50, owner=self))
+        self.buttons.append(Button(3, self.x + 103, self.y + 54, 42, 50, owner=self))
+        self.owner.game.buttons.extend(self.buttons)
+
+    def draw(self):
+        current_item = config.CRAFT_RECIPES[self.index][1]
+        functions.draw_image(config.CRAFT_MENU, self.x, self.y)
+        functions.draw_image(functions.get_item(current_item), self.x + 51, self.y + 54)
+        for i in range(0, len(config.CRAFT_RECIPES[self.index][0])):
+            t = config.CRAFT_RECIPES[self.index][0][i]
+            item_id = t[0]
+            item_amount = t[1]
+            functions.draw_image(functions.get_item(item_id), self.x + 6, self.y + 134 + i*50 + i*2)
+            functions.draw_text(config.ITEM_DATA[item_id]["name"]+" x"+str(item_amount), 60 + self.x, 158 + i * 50 + self.y, size=15)
+
+    def tick(self):
+        if not self.active:
+            return
+        self.draw()
+
+    def check_mouse(self, mouse_x, mouse_y):
+        x = self.x
+        y = self.y
+        return x < mouse_x < x + self.w and y < mouse_y < y + self.h
+
+    def next_craft(self):
+        self.index += 1
+        if self.index >= self.max_index:
+            self.index = 0
+
+    def previous_craft(self):
+        self.index -= 1
+        if self.index < 0:
+            self.index = self.max_index - 1
+
+    def craft(self):
+        if self.can_craft():
+            for i in range(0, len(config.CRAFT_RECIPES[self.index][0])):
+                t = config.CRAFT_RECIPES[self.index][0][i]
+                item_id = t[0]
+                item_amount = t[1]
+                self.owner.inventory.remove_item(item_id, item_amount)
+            self.owner.inventory.add_item(config.CRAFT_RECIPES[self.index][1], 1)
+
+
+    def can_craft(self):
+        current_item = config.CRAFT_RECIPES[self.index][1]
+        for i in range(0, len(config.CRAFT_RECIPES[self.index][0])):
+            t = config.CRAFT_RECIPES[self.index][0][i]
+            item_id = t[0]
+            item_amount = t[1]
+            if not self.owner.inventory.check_if_has_items(item_id, item_amount):
+                return False
+        return True
+
+
