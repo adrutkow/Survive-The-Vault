@@ -47,10 +47,11 @@ def draw_chunk(chunk, player):
             pos_x = x * 50 + chunk.x * 16 * 50 - player.x + 1366 / 2
             pos_y = y * 50 + chunk.y * 16 * 50 - player.y + 768 / 2
 
-            if pos_x < -60 or pos_x > 1366 or pos_y < -60 or pos_y > 850:
+            if pos_x < -60 or pos_x > 1366 or pos_y < -60 or pos_y > 800:
                 continue
 
-            draw_image(get_block(config.BLOCK_DATA[chunk.blocks[y][x].id]["texture"]), pos_x, pos_y)
+            image = get_block(config.BLOCK_DATA[chunk.blocks[y][x].id]["texture"])
+            draw_image(image, pos_x, pos_y)
             if chunk.blocks[y][x].entity is not None:
                 chunk.blocks[y][x].entity.draw(pos_x, pos_y)
 
@@ -78,12 +79,6 @@ def handle_inputs():
             pygame.quit()
         if e.type == pygame.MOUSEBUTTONDOWN:
             mouse(e)
-            world = variables.game.world
-            player = variables.player
-            mouse_x = pygame.mouse.get_pos()[0] - 1366 / 2
-            mouse_y = pygame.mouse.get_pos()[1] - 768 / 2
-            # world.get_block(player.x + mouse_x, player.y + mouse_y).id = 5
-
     keys = pygame.key.get_pressed()
 
     if keys[pygame.K_1]:
@@ -167,6 +162,5 @@ def make_farmland():
     mouse_x = pygame.mouse.get_pos()[0] - 1366 / 2
     mouse_y = pygame.mouse.get_pos()[1] - 768 / 2
     block = variables.game.world.get_block(variables.player.x + mouse_x, variables.player.y + mouse_y)
-    print(block.id)
     if block.id == 0:
         block.id = 3

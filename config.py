@@ -2,6 +2,8 @@ import pygame
 import perlin_noise
 
 WINDOW = pygame.display.set_mode((1366, 768))
+ALPHA_WINDOW = pygame.Surface((1366, 768))
+ALPHA_WINDOW.set_alpha(128)
 DEFAULT_X = 1366
 DEFAULT_Y = 768
 CLOCK = pygame.time.Clock()
@@ -11,6 +13,7 @@ INVENTORY = pygame.image.load("files/misc/inventory.png").convert()
 PLAYER_IMAGE = pygame.image.load("files/player/player.png").convert_alpha()
 TITLE_SCREEN = pygame.image.load("files/misc/title_screen.png").convert()
 CRAFT_MENU = pygame.image.load("files/misc/craft_menu.png").convert()
+BUTTONS = pygame.image.load("files/misc/buttons.png").convert()
 SEED = 2131231
 OCTAVE = 1
 NOISE = perlin_noise.PerlinNoise(OCTAVE, SEED)

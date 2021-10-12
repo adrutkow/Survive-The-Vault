@@ -10,6 +10,9 @@ class Game:
         self.world = World()
         self.players = []
         self.buttons = []
+        self.buttons.append(Button(4, 1199, 602, 51, 53))
+        self.buttons.append(Button(5, 1250, 602, 51, 53))
+        self.buttons.append(Button(6, 1300, 602, 51, 53))
 
     def tick(self):
         for i in self.players:
@@ -19,7 +22,9 @@ class Game:
 class World:
     def __init__(self):
         self.chunks = []
-        self.entities = []
+        self.npcs = []
+        self.time = 0
+        self.alpha = 0
         for y in range(-2, 2):
             for x in range(-2, 2):
                 self.chunks.append(Chunk(x, y))
@@ -36,6 +41,21 @@ class World:
         chunk = self.get_chunk(functions.get_chunk_coords(x, y)[0], functions.get_chunk_coords(x, y)[1])
         bx, by = functions.get_block_coords(x, y)
         return chunk.blocks[by][bx]
+
+    def tick(self):
+        self.time += 60 * variables.delta_time
+        self.draw()
+
+    def draw(self):
+        self.alpha = self.time // 400
+
+        if self.alpha > 200:
+            self.alpha = 200
+
+        config.ALPHA_WINDOW.set_alpha(self.alpha)
+        config.WINDOW.blit(config.ALPHA_WINDOW, (0, 0))
+        return
+
 
 
 class Chunk:
@@ -85,7 +105,7 @@ class Entity:
         self.y = y
         self.harvestable = True
         self.resources = None
-        self.hardness = 60
+        self.hardness = 1
         self.block = block
 
     def draw(self, x, y):
@@ -106,7 +126,7 @@ class Player:
         self.world = game.world
         self.current_chunk = self.world.get_chunk(self.chunk_x, self.chunk_y)
         self.adjacent_chunks = []
-        self.speed = 5
+        self.speed = 240
         self.offset_x = 1366 / 2 + self.w / 2
         self.offset_y = 768 / 2 + self.h / 2
         self.collision_box = [self.x - self.w / 2, self.y + self.h - 10, 5, 5]
@@ -128,16 +148,24 @@ class Player:
                 self.adjacent_chunks.append(self.world.get_chunk(x - 1, y - 1))
 
     def tick(self):
-        self.timer += 1
+        old_timer = self.timer
+        self.timer += 1 * variables.delta_time
+        if int(self.timer) != int(old_timer):
+            if int(self.timer) % 20 == 0:
+                self.hunger -= 1
         self.chunk_x, self.chunk_y = functions.get_chunk_coords(self.x, self.y)
         self.movement()
         self.do_harvest()
         self.do_eating()
         self.chunk_check()
         self.draw()
+
+        self.world.tick()
+
         functions.draw_image(config.INVENTORY, 1198, 112)
+        functions.draw_image(config.BUTTONS, 1198, 604)
         self.inventory.draw_items()
-        self.craft_menu.draw()
+        self.craft_menu.tick()
         self.do_hunger()
 
     def movement(self):
@@ -146,13 +174,13 @@ class Player:
         old_y = self.y
 
         if keys[pygame.K_w]:
-            self.y -= self.speed
+            self.y -= self.speed * variables.delta_time
         if keys[pygame.K_s]:
-            self.y += self.speed
+            self.y += self.speed * variables.delta_time
         if keys[pygame.K_a]:
-            self.x -= self.speed
+            self.x -= self.speed * variables.delta_time
         if keys[pygame.K_d]:
-            self.x += self.speed
+            self.x += self.speed * variables.delta_time
         if keys[pygame.K_SPACE]:
             print("pos", self.x, self.y, "chunk", functions.get_chunk_coords(self.x, self.y))
 
@@ -194,6 +222,9 @@ class Player:
         self.progress_bar.draw()
         functions.draw_text("health: " + str(self.health), 0, 0)
         functions.draw_text("hunger: " + str(self.hunger), 0, 20)
+        functions.draw_text("time: "+str(self.world.time//60), 0, 40)
+        functions.draw_text("alpha: "+str(self.world.alpha), 0, 60)
+        functions.draw_text("fps: "+str(config.CLOCK.get_fps())[:4], 0, 80)
 
     def check_position(self, x, y):
         b_x, b_y = functions.get_block_coords(x, y)
@@ -223,7 +254,7 @@ class Player:
     def do_harvest(self):
         if not self.is_harvesting:
             return
-        self.progress_bar.progress += 1 + self.bonus
+        self.progress_bar.progress += (1 + self.bonus) * variables.delta_time
         if self.progress_bar.progress >= self.progress_bar.max_progress:
             if self.currently_harvesting.block is not None:
                 functions.get_loot_from_entity(self.currently_harvesting.id, self.inventory)
@@ -236,12 +267,12 @@ class Player:
         self.currently_eating = self.inventory.inventory[self.inventory.selected[1]][self.inventory.selected[0]].id
         self.progress_bar.active = True
         self.progress_bar.progress = 0
-        self.progress_bar.max_progress = 30
+        self.progress_bar.max_progress = 0.5
 
     def do_eating(self):
         if not self.is_eating:
             return
-        self.progress_bar.progress += 1
+        self.progress_bar.progress += 1 * variables.delta_time
         if self.progress_bar.progress >= self.progress_bar.max_progress:
             self.hunger += config.ITEM_DATA[self.currently_eating]["hunger"]
             self.hunger = 100 if self.hunger > 100 else self.hunger
@@ -268,7 +299,7 @@ class Player:
                         self.world.get_chunk(self.current_chunk.x + x, self.current_chunk.y + y))
 
     def do_hunger(self):
-        if self.timer % 1200 == 0:
+        if self.timer % 3 == 0:
             if self.hunger <= 0:
                 self.health -= 1
             else:
@@ -312,6 +343,11 @@ class Button:
         # Next craft button
         if self.id == 3:
             self.owner.next_craft()
+        # Toggle craft button
+        if self.id == 4:
+            variables.player.craft_menu.active = not variables.player.craft_menu.active
+            print(variables.player.craft_menu.active)
+
 
     def is_clicked(self, x, y):
         mouse_click = pygame.mouse.get_pressed()
@@ -321,6 +357,8 @@ class Button:
 
     def tick(self):
         if not self.active:
+            return
+        if self.owner == variables.player.craft_menu and not variables.player.craft_menu.active:
             return
         mouse = pygame.mouse.get_pos()
         if self.is_clicked(mouse[0], mouse[1]):
