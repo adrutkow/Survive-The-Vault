@@ -14,6 +14,7 @@ PLAYER_IMAGE = pygame.image.load("files/player/player.png").convert_alpha()
 TITLE_SCREEN = pygame.image.load("files/misc/title_screen.png").convert()
 CRAFT_MENU = pygame.image.load("files/misc/craft_menu.png").convert()
 BUTTONS = pygame.image.load("files/misc/buttons.png").convert()
+BOB = pygame.image.load("files/npcs/bob.png").convert_alpha()
 SEED = 2131231
 OCTAVE = 1
 NOISE = perlin_noise.PerlinNoise(OCTAVE, SEED)
@@ -54,10 +55,10 @@ ENTITY_DATA = [
 ]
 
 BLOCK_DATA = [
-    {"name": "grass", "walkable": True, "texture":0},
-    {"name": "water", "texture":1},
-    {"name": "sand", "walkable": True, "texture":2},
-    {"name": "farmland", "walkable":True, "texture":10}
+    {"name": "grass", "walkable": True, "texture": 0},
+    {"name": "water", "texture": 1},
+    {"name": "sand", "walkable": True, "texture": 2},
+    {"name": "farmland", "walkable":True, "texture": 10}
 ]
 
 CRAFT_RECIPES = [

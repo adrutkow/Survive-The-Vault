@@ -9,20 +9,23 @@ class Game:
     def __init__(self):
         self.world = World()
         self.players = []
+        self.npcs = []
         self.buttons = []
         self.buttons.append(Button(4, 1199, 602, 51, 53))
         self.buttons.append(Button(5, 1250, 602, 51, 53))
         self.buttons.append(Button(6, 1300, 602, 51, 53))
+        self.npcs.append(Npc())
 
     def tick(self):
         for i in self.players:
+            i.tick()
+        for i in self.npcs:
             i.tick()
 
 
 class World:
     def __init__(self):
         self.chunks = []
-        self.npcs = []
         self.time = 0
         self.alpha = 0
         for y in range(-2, 2):
@@ -592,4 +595,24 @@ class CraftMenu:
                 return False
         return True
 
+
+class Npc:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.w = 40
+        self.h = 70
+        self.id = 0
+        self.speed = 50
+
+    def tick(self):
+        self.draw()
+
+    def draw(self):
+        e_x, e_y = self.x - variables.player.x + 1366/2, self.y - variables.player.y + 768/2
+        functions.draw_image(config.BOB, e_x, e_y)
+
+    def is_mouse_over(self, x, y):
+        e_x, e_y = self.x - variables.player.x + 1366 / 2, self.y - variables.player.y + 768 / 2
+        return e_x < x < e_x + self.w and e_y < y < e_y + self.h
 

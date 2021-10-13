@@ -105,6 +105,9 @@ def mouse(event):
             player.inventory.selected = None
         for i in game.buttons:
             i.tick()
+        for i in game.npcs:
+            if i.is_mouse_over(mouse_x, mouse_y):
+                pass
 
     # Right click
     if button == 3:
