@@ -42,7 +42,8 @@ ITEM_DATA = [
     {"name": "soy"},
     {"name": "one sliwka"},
     {"name": "bendy axe", "is_tool": True, "is_axe": True},
-    {"name": "bendy fans"}
+    {"name": "bendy fans"},
+    {"name": "Sliwka sword", "is_tool": True},
 ]
 
 ENTITY_DATA = [
