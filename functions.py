@@ -105,9 +105,13 @@ def mouse(event):
             player.inventory.selected = None
         for i in game.buttons:
             i.tick()
+        player.selected_npc = None
         for i in game.npcs:
             if i.is_mouse_over(mouse_x, mouse_y):
-                pass
+                player.selected_npc = i
+                x = pygame.mouse.get_pos()[0] - 1366 / 2 + player.x
+                y = pygame.mouse.get_pos()[1] - 768 / 2 + player.y
+                add_text("selected", x, y)
 
     # Right click
     if button == 3:
@@ -167,3 +171,6 @@ def make_farmland():
     block = variables.game.world.get_block(variables.player.x + mouse_x, variables.player.y + mouse_y)
     if block.id == 0:
         block.id = 3
+
+def add_text(text, x, y):
+    variables.game.texts.append(classes.Text(text, x, y))

@@ -11,6 +11,7 @@ class Game:
         self.players = []
         self.npcs = []
         self.buttons = []
+        self.texts = []
         self.buttons.append(Button(4, 1199, 602, 51, 53))
         self.buttons.append(Button(5, 1250, 602, 51, 53))
         self.buttons.append(Button(6, 1300, 602, 51, 53))
@@ -20,6 +21,8 @@ class Game:
         for i in self.players:
             i.tick()
         for i in self.npcs:
+            i.tick()
+        for i in self.texts:
             i.tick()
 
 
@@ -144,6 +147,7 @@ class Player:
         self.health = 100
         self.hunger = 100
         self.timer = 0
+        self.selected_npc = None
         for y in range(0, 3):
             for x in range(0, 3):
                 if x == 1 and y == 1:
@@ -349,7 +353,6 @@ class Button:
         # Toggle craft button
         if self.id == 4:
             variables.player.craft_menu.active = not variables.player.craft_menu.active
-            print(variables.player.craft_menu.active)
 
 
     def is_clicked(self, x, y):
@@ -433,6 +436,23 @@ class ProgressBar:
         self.progress = 1
 
 
+class HealthBar:
+    def __init__(self, owner):
+        self.owner = owner
+        self.max_progress = 100
+        self.active = False
+        self.w = 60
+        self.h = 20
+
+    def tick(self):
+        x = self.owner.x - variables.player.x + 1366 / 2
+        y = self.owner.y - variables.player.y + 768 / 2
+        health = self.owner.health
+        max_health = self.owner.max_health
+        pygame.draw.rect(config.WINDOW, (255, 0, 0), (x - self.w/2, y - self.owner.h, self.w // (max_health/health), self.h))
+        pygame.draw.rect(config.WINDOW, (0, 0, 0), (x - self.w/2, y - self.owner.h, self.w, self.h), 3)
+
+
 class Inventory:
     def __init__(self, owner, layout, x, y):
         self.owner = owner
@@ -448,8 +468,6 @@ class Inventory:
         for i in range(0, self.layout[1]):
             arr = [None]*self.layout[0]
             self.inventory.append(arr.copy())
-        for i in self.inventory:
-            print(i)
 
     def draw_items(self, pos_x=0, pos_y=0):
         pos_x = self.x
@@ -604,15 +622,39 @@ class Npc:
         self.h = 70
         self.id = 0
         self.speed = 50
+        self.max_health = 100
+        self.health = self.max_health
+        self.health_bar = HealthBar(self)
 
     def tick(self):
+        self.x += 1
         self.draw()
+        self.health_bar.tick()
 
     def draw(self):
         e_x, e_y = self.x - variables.player.x + 1366/2, self.y - variables.player.y + 768/2
         functions.draw_image(config.BOB, e_x, e_y)
+        if variables.player.selected_npc == self:
+            pygame.draw.rect(config.WINDOW, (255, 0, 0), (e_x, e_y, self.w, self.h), 3)
 
     def is_mouse_over(self, x, y):
         e_x, e_y = self.x - variables.player.x + 1366 / 2, self.y - variables.player.y + 768 / 2
         return e_x < x < e_x + self.w and e_y < y < e_y + self.h
 
+
+class Text:
+    def __init__(self, text, x, y):
+        self.x = x
+        self.y = y
+        self.text = text
+        self.lifetime = 0
+
+    def tick(self):
+        self.lifetime += 1
+        self.y -= 1
+        player = variables.player
+        e_x, e_y = self.x - player.x + 1366 / 2, self.y - player.y + 768 / 2
+        functions.draw_text(self.text, e_x, e_y, size=20, color=(0,255,0))
+        if self.lifetime > 50:
+            variables.game.texts.remove(self)
+            del self
