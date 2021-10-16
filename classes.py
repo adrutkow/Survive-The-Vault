@@ -2,6 +2,7 @@ import config
 import functions
 import pygame
 import variables
+import math
 from random import randint
 
 
@@ -31,8 +32,8 @@ class World:
         self.chunks = []
         self.time = 0
         self.alpha = 0
-        for y in range(-2, 2):
-            for x in range(-2, 2):
+        for y in range(-3, 3):
+            for x in range(-3, 3):
                 self.chunks.append(Chunk(x, y))
 
     def get_chunk(self, x, y):
@@ -44,6 +45,7 @@ class World:
         return new_chunk
 
     def get_block(self, x, y):
+        """Returns a world block using block coordinates"""
         chunk = self.get_chunk(functions.get_chunk_coords(x, y)[0], functions.get_chunk_coords(x, y)[1])
         bx, by = functions.get_block_coords(x, y)
         return chunk.blocks[by][bx]
@@ -139,8 +141,10 @@ class Player:
         self.is_harvesting = False
         self.currently_harvesting = None
         self.is_eating = False
-        self.bonus = 0
         self.currently_eating = None
+        self.is_attacking = False
+        self.currently_attacking = None
+        self.bonus = 0
         self.progress_bar = ProgressBar(self)
         self.inventory = Inventory(self, [3, 9], 1198, 148)
         self.craft_menu = CraftMenu(self, 1044, 112)
@@ -164,6 +168,7 @@ class Player:
         self.movement()
         self.do_harvest()
         self.do_eating()
+        self.do_attacking()
         self.chunk_check()
         self.draw()
 
@@ -288,6 +293,22 @@ class Player:
             self.is_eating = False
             self.currently_eating = None
 
+    def attack(self, target):
+        self.is_attacking = True
+        self.currently_attacking = target
+        self.progress_bar.active = True
+        self.progress_bar.progress = 0
+        self.progress_bar.max_progress = 1
+
+    def do_attacking(self):
+        if not self.is_attacking:
+            return
+        self.progress_bar.progress += 1 * variables.delta_time
+        if self.progress_bar.progress >= self.progress_bar.max_progress:
+            self.currently_attacking.health -= 10
+            self.progress_bar.reset()
+            self.is_attacking = False
+            self.currently_attacking = None
 
     def chunk_check(self):
         """Checks if the player changed chunks"""
@@ -400,6 +421,7 @@ class Item:
         self.is_material = config.ITEM_DATA[id].get("is_material")
         self.is_axe = config.ITEM_DATA[id].get("is_axe")
         self.is_hoe = config.ITEM_DATA[id].get("is_hoe")
+        self.is_weapon = config.ITEM_DATA[id].get("is_weapon")
         self.places = config.ITEM_DATA[id].get("places")
 
     def use(self):
@@ -445,9 +467,9 @@ class HealthBar:
         self.h = 20
 
     def tick(self):
-        x = self.owner.x - variables.player.x + 1366 / 2
-        y = self.owner.y - variables.player.y + 768 / 2
-        health = self.owner.health
+        x = self.owner.x - variables.player.x + 1366 / 2 + 20
+        y = self.owner.y - variables.player.y + 768 / 2 + 30
+        health = 1 if self.owner.health == 0 else self.owner.health
         max_health = self.owner.max_health
         pygame.draw.rect(config.WINDOW, (255, 0, 0), (x - self.w/2, y - self.owner.h, self.w // (max_health/health), self.h))
         pygame.draw.rect(config.WINDOW, (0, 0, 0), (x - self.w/2, y - self.owner.h, self.w, self.h), 3)
@@ -627,9 +649,11 @@ class Npc:
         self.health_bar = HealthBar(self)
 
     def tick(self):
-        self.x += 1
+        self.move(math.pi/8)
         self.draw()
         self.health_bar.tick()
+        if self.health <= 0:
+            self.die()
 
     def draw(self):
         e_x, e_y = self.x - variables.player.x + 1366/2, self.y - variables.player.y + 768/2
@@ -640,6 +664,20 @@ class Npc:
     def is_mouse_over(self, x, y):
         e_x, e_y = self.x - variables.player.x + 1366 / 2, self.y - variables.player.y + 768 / 2
         return e_x < x < e_x + self.w and e_y < y < e_y + self.h
+
+    def move(self, angle):
+        old_x = self.x
+        old_y = self.y
+        self.x += math.cos(angle) * self.speed * variables.delta_time
+        self.y += math.sin(angle) * self.speed * variables.delta_time
+        if functions.check_position(self.x, self.y):
+            return
+        self.x = old_x
+        self.y = old_y
+
+    def die(self):
+        variables.game.npcs.remove(self)
+        del self
 
 
 class Text:

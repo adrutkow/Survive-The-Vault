@@ -17,7 +17,8 @@ def initialize():
     variables.game.players.append(variables.player)
     variables.player.inventory.add_item(0, 150)
     variables.player.inventory.add_item(1, 150)
-
+    variables.minimap = pygame.Surface((1366, 768))
+    #load_minimap()
 
 def draw_image(image, x, y):
     window = config.WINDOW
@@ -89,6 +90,9 @@ def handle_inputs():
         load_game()
         print("loaded game")
 
+    if keys[pygame.K_m]:
+        load_minimap()
+
 
 def mouse(event):
     player = variables.player
@@ -106,18 +110,13 @@ def mouse(event):
         for i in game.buttons:
             i.tick()
         player.selected_npc = None
-        for i in game.npcs:
-            if i.is_mouse_over(mouse_x, mouse_y):
-                player.selected_npc = i
-                x = pygame.mouse.get_pos()[0] - 1366 / 2 + player.x
-                y = pygame.mouse.get_pos()[1] - 768 / 2 + player.y
-                add_text("selected", x, y)
+
 
     # Right click
     if button == 3:
-        mouse_x = pygame.mouse.get_pos()[0] - 1366 / 2
-        mouse_y = pygame.mouse.get_pos()[1] - 768 / 2
-        block = variables.game.world.get_block(player.x + mouse_x, player.y + mouse_y)
+        mouse_x = pygame.mouse.get_pos()[0]
+        mouse_y = pygame.mouse.get_pos()[1]
+        block = variables.game.world.get_block(player.x + mouse_x - 1366 / 2, player.y + mouse_y - 768 / 2)
         if block.entity is not None:
             if block.entity.harvestable:
                 if player.inventory.get_selected_item() is None:
@@ -130,6 +129,22 @@ def mouse(event):
             selected = player.inventory.selected
             if player.inventory.inventory[selected[1]][selected[0]] is not None:
                 player.inventory.inventory[selected[1]][selected[0]].use()
+
+        # Select npc
+        player.selected_npc = None
+        for i in game.npcs:
+            if i.is_mouse_over(mouse_x, mouse_y):
+                player.selected_npc = i
+                x = pygame.mouse.get_pos()[0] - 1366 / 2 + player.x
+                y = pygame.mouse.get_pos()[1] - 768 / 2 + player.y
+                add_text("selected", x, y)
+
+        if player.selected_npc is not None:
+            if player.inventory.get_selected_item() is None:
+                return
+
+            if player.inventory.get_selected_item().is_weapon and not player.is_attacking:
+                player.attack(player.selected_npc)
 
 
 def save_game():
@@ -172,5 +187,32 @@ def make_farmland():
     if block.id == 0:
         block.id = 3
 
+def check_position(x, y):
+    block = variables.game.world.get_block(x, y)
+    print(block.x, block.y, block.id)
+    if block.entity is not None:
+        return False
+    if config.BLOCK_DATA[block.id].get("walkable") is not None:
+        return True
+    return False
+
 def add_text(text, x, y):
     variables.game.texts.append(classes.Text(text, x, y))
+
+
+def load_minimap():
+    b = 1
+    variables.minimap = pygame.Surface((1366,768))
+    for y in range(-3, 3):
+        for x in range(-3, 3):
+            c = None
+            for i in variables.game.world.chunks:
+                if i.x == x and i.y == y:
+                    c = i
+                    break
+            if c is None:
+                continue
+            for yy in range(0, 16):
+                for xx in range(0, 16):
+                    block = c.blocks[yy][xx]
+                    pygame.draw.rect(variables.minimap, config.MINIMAP_COLORS[block.id], (x * 16 * b + xx * b, y * 16 * b + yy * b, b, b))

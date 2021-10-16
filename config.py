@@ -35,16 +35,16 @@ ITEM_DATA = [
     {"name": "Stone block", "places": 3},
     {"name": "fuckig hoe", "is_tool": True, "is_hoe": True},
     {"name": "rare sliwka", "is_food": True, "hunger": 100},
-    {"name": "fuckig sword", "is_tool": True},
+    {"name": "fuckig sword", "is_tool": True, "is_weapon": True},
     {"name": "blunt", "is_food": True, "hunger": 20},
-    {"name": "Bosnian sword", "is_tool": True},
+    {"name": "Bosnian sword", "is_tool": True, "is_weapon": True},
     {"name": "bomba"},                                                     #10
-    {"name": "kazakhstan bomba"},
+    {"name": "kazakhstan bomba", "is_weapon": True},
     {"name": "soy"},
     {"name": "one sliwka"},
     {"name": "bendy axe", "is_tool": True, "is_axe": True},
-    {"name": "bendy fans"},
-    {"name": "Sliwka sword", "is_tool": True},
+    {"name": "bendy fans", "is_weapon": True},
+    {"name": "Sliwka sword", "is_tool": True, "is_weapon": True},
 ]
 
 ENTITY_DATA = [
@@ -70,6 +70,13 @@ CRAFT_RECIPES = [
     [[[0, 100], [1, 100]], 14],
     [[[2, 50], [0,100], [1,100]], 15],
     [[[2, 25], [0, 100]], 16]
+]
+
+MINIMAP_COLORS = [
+    (0, 255, 0),
+    (0, 0, 255),
+    (240,230,140),
+    (165,42,42)
 ]
 
 # int(abs(config.NOISE((x/30, y/30)) * 255))
