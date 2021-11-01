@@ -670,7 +670,7 @@ class Npc:
         old_y = self.y
         self.x += math.cos(angle) * self.speed * variables.delta_time
         self.y += math.sin(angle) * self.speed * variables.delta_time
-        if functions.check_position(self.x, self.y):
+        if functions.check_position(self.x, self.y) and functions.check_position(self.x+self.w, self.y) and functions.check_position(self.x, self.y+self.h) and functions.check_position(self.x+self.w, self.y+self.h):
             return
         self.x = old_x
         self.y = old_y
